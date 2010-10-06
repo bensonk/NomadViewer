@@ -1,6 +1,7 @@
 This is an android app designed to work in conjunction with the nomads rails app.  The rails app is running at http://nomad.heroku.com, and this app currently has that URL hardcoded into it.  As things progress, I'll make that a configurable setting.  
 
 I have big plans, which include, but are not limited to: 
+
   * Create a local db to everything in, including
     * Recent activity
     * Suggestions
