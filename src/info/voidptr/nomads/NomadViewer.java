@@ -8,6 +8,8 @@ import org.apache.http.HttpRequest;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpUriRequest;
+import org.json.JSONArray;
+import org.json.JSONException;
 
 import android.app.Activity;
 import android.net.http.AndroidHttpClient;
@@ -40,8 +42,9 @@ public class NomadViewer extends Activity {
 				showText("Got statuses...");
 				BufferedReader reader = new BufferedReader(new InputStreamReader(res.getEntity().getContent()));
 				String actions = reader.readLine();
-				Log.i("NomadViewer", "Actions: " + actions);
-				showText(actions);
+				
+				Log.i("NomadViewer", actions);
+				showText(formatActions(actions));
 			} catch (IOException e) {
 				showText("Failure: " + e.getClass().getName() + " -- " + e.getMessage());
 				Log.w("NomadViewer", e.getMessage());
@@ -49,6 +52,20 @@ public class NomadViewer extends Activity {
 		} }).start();
 	}
 	
+	private String formatActions(String actions) {
+		String ret = "<error parsing suggestions>";
+		try {
+			JSONArray json = new JSONArray(actions);
+			ret = "";
+			for(int i = 0; i < json.length(); i++) {
+				ret = ret + json.getString(i) + "\n\n";
+			}
+		} catch (JSONException e) {
+			Log.w("NomadViewer", "Failed to parse actions: " + e.getClass().getName() + " -- " + e.getMessage());
+		}
+		return ret;
+	}
+
 	private void showText(final String txt) {
 		// Don't you just love Java? 
 		Runnable r = new Runnable() {
