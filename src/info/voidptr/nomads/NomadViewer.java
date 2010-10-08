@@ -41,7 +41,7 @@ public class NomadViewer extends Activity {
         public static final String TITLE = "title";
         public static final String CONTENT = "content";
         public static final String LAT = "lat";
-        public static final String LON = "lat";
+        public static final String LON = "lon";
         public static final String CREATED_AT = "created_at";
         public static final String UPDATED_AT = "updated_at";
         public static final String ICON_ID = "icon_id";
@@ -91,7 +91,7 @@ public class NomadViewer extends Activity {
                     + Suggestions.CREATED_AT + " TIMESTAMP,"
                     + Suggestions.UPDATED_AT + " TIMESTAMP,"
                     + Suggestions.ICON_ID + " INTEGER,"
-                    + Suggestions.USER_ID + " INTEGER,"
+                    + Suggestions.USER_ID + " INTEGER"
                     + ");");
         }
 
@@ -113,6 +113,7 @@ public class NomadViewer extends Activity {
         super.onCreate(savedInstanceState);
         handler = new Handler();
         db = new DatabaseHelper(this);
+        SQLiteDatabase sdb =  db.getWritableDatabase();
         setContentView(R.layout.main);
         fetchUpdates();
     }
