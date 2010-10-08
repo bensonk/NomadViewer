@@ -25,7 +25,7 @@ public class NomadViewer extends Activity {
 	public static final String TAG = "NomadViewer";
 	private static String DATABASE_NAME = "nomad_db";
 	private static int DATABASE_VERSION = 1;
-	private static String ACTIVITY_URL = "http://nomad.heroku.com/activity.json";
+	private static String ACTIVITY_URL = "http://nomad.heroku.com/activity/plain.json";
 	private static String USERS_URL = "http://nomad.heroku.com/users.json";
 	private static String SUGGESTIONS_URL = "http://nomad.heroku.com/suggestions.json";
 	
@@ -130,7 +130,7 @@ public class NomadViewer extends Activity {
 				BufferedReader reader = new BufferedReader(new InputStreamReader(res.getEntity().getContent()));
 				String actions = reader.readLine();
 
-				Log.i(TAG, actions);
+				Log.i(TAG, "Actions: " + actions);
 				showText(formatActions(actions));
 			} catch (IOException e) {
 				showText("Failure fetching recent activity: " + e.getClass().getName() + " -- " + e.getMessage());
@@ -172,6 +172,8 @@ public class NomadViewer extends Activity {
 				showText("Failure: " + e.getClass().getName() + " -- " + e.getMessage());
 				Log.w(TAG, e.getMessage());
 			}
+			
+			client.close();
 		} }).start();
 	}
 
