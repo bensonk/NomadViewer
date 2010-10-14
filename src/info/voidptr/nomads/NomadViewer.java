@@ -20,12 +20,15 @@ import android.net.http.AndroidHttpClient;
 import android.os.Bundle;
 import android.os.Handler;
 import android.util.Log;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
 
 public class NomadViewer extends ListActivity {
 	public static final String TAG = "NomadViewer";
+	private static final int SUGGESTIONS_ID = Menu.FIRST + 10;
 	private static String ACTIVITY_URL = "http://nomad.heroku.com/activity/plain.json";
 	private static String USERS_URL = "http://nomad.heroku.com/users.json";
 	private static String SUGGESTIONS_URL = "http://nomad.heroku.com/suggestions.json";
@@ -51,6 +54,27 @@ public class NomadViewer extends ListActivity {
     }
 	
 	@Override
+	public boolean onCreateOptionsMenu(Menu m) {
+		m.add(Menu.NONE, SUGGESTIONS_ID, Menu.NONE, "Suggestions");
+		return super.onCreateOptionsMenu(m);
+	}
+	
+	@Override
+	public boolean onOptionsItemSelected(MenuItem m) {
+		
+		return handleMenuSelection(m) || super.onOptionsItemSelected(m);
+	}
+	
+	private boolean handleMenuSelection(MenuItem m) {
+		switch(m.getItemId()) {
+		case SUGGESTIONS_ID:
+			startActivity(new Intent(this, SuggestionList.class));
+			return true;
+		}
+		return false;
+	}
+	
+	@Override
 	public void onListItemClick(ListView parent, View v, int i, long id) {
 		Log.i(TAG, "Opening url: " + links[i]);
 		Intent browserIntent = new Intent("android.intent.action.VIEW", Uri.parse(links[i]));
@@ -58,63 +82,65 @@ public class NomadViewer extends ListActivity {
 	}
 
 	private void fetchUpdates() {
-		new Thread(new Runnable() { @Override
-		public void run() {
-			Log.i(TAG, "Fetching activity from " + ACTIVITY_URL);
-			AndroidHttpClient client = AndroidHttpClient.newInstance("Nomad App");
+		new Thread(new Runnable() {
+			@Override
+			public void run() {
+				Log.i(TAG, "Fetching activity from " + ACTIVITY_URL);
+				AndroidHttpClient client = AndroidHttpClient.newInstance("Nomad App");
 
-			// Fetch recent activity
-			try {
-				HttpResponse res = client.execute((HttpUriRequest) new HttpGet(ACTIVITY_URL));
-				BufferedReader reader = new BufferedReader(new InputStreamReader(res.getEntity().getContent()));
-				String actions = reader.readLine();
-
-				Log.i(TAG, "Actions: " + actions);
-				parseAndShowActions(actions);
-			} catch (IOException e) {
-				Log.e(TAG, e.getMessage());
-			}
-			
-			long time = Calendar.getInstance().getTimeInMillis();
-			long age = lastUpdate - time;
-			lastUpdate = time;
-			if(age < 10000) return;
-
-			// Fetch Users table
-			try {
-				HttpResponse res = client.execute((HttpUriRequest) new HttpGet(USERS_URL));
-				BufferedReader reader = new BufferedReader(new InputStreamReader(res.getEntity().getContent()));
-				StringBuffer content_buffer = new StringBuffer();
-				String line = reader.readLine();
-				while(line != null) {
-					content_buffer.append(line + "\n");
-					line = reader.readLine();
+				// Fetch recent activity
+				try {
+					HttpResponse res = client.execute((HttpUriRequest) new HttpGet(ACTIVITY_URL));
+					BufferedReader reader = new BufferedReader(new InputStreamReader(res.getEntity().getContent()));
+					String actions = reader.readLine();
+	
+					Log.i(TAG, "Actions: " + actions);
+					parseAndShowActions(actions);
+				} catch (IOException e) {
+					Log.e(TAG, e.getMessage());
 				}
-				String json_str = content_buffer.toString();
-				updateUsers(json_str);
-				Log.i(TAG, "Fetched Users table");
-			} catch (IOException e) {
-				Log.e(TAG, e.getMessage());
-			}
-
-			// Fetch Suggestions table
-			try {
-				HttpResponse res = client.execute((HttpUriRequest) new HttpGet(SUGGESTIONS_URL));
-				BufferedReader reader = new BufferedReader(new InputStreamReader(res.getEntity().getContent()));
-				StringBuffer content_buffer = new StringBuffer();
-				String line = reader.readLine();
-				while(line != null) {
-					content_buffer.append(line + "\n");
-					line = reader.readLine();
+				
+				long time = Calendar.getInstance().getTimeInMillis();
+				long age = lastUpdate - time;
+				lastUpdate = time;
+				if(age < 10000) return;
+	
+				// Fetch Users table
+				try {
+					HttpResponse res = client.execute((HttpUriRequest) new HttpGet(USERS_URL));
+					BufferedReader reader = new BufferedReader(new InputStreamReader(res.getEntity().getContent()));
+					StringBuffer content_buffer = new StringBuffer();
+					String line = reader.readLine();
+					while(line != null) {
+						content_buffer.append(line + "\n");
+						line = reader.readLine();
+					}
+					String json_str = content_buffer.toString();
+					updateUsers(json_str);
+					Log.i(TAG, "Fetched Users table");
+				} catch (IOException e) {
+					Log.e(TAG, e.getMessage());
 				}
-				String json_str = content_buffer.toString();
-				updateSuggestions(json_str);
-			} catch (IOException e) {
-				Log.e(TAG, e.getMessage());
-			}
-
-			client.close();
-		} }).start();
+	
+				// Fetch Suggestions table
+				try {
+					HttpResponse res = client.execute((HttpUriRequest) new HttpGet(SUGGESTIONS_URL));
+					BufferedReader reader = new BufferedReader(new InputStreamReader(res.getEntity().getContent()));
+					StringBuffer content_buffer = new StringBuffer();
+					String line = reader.readLine();
+					while(line != null) {
+						content_buffer.append(line + "\n");
+						line = reader.readLine();
+					}
+					String json_str = content_buffer.toString();
+					updateSuggestions(json_str);
+				} catch (IOException e) {
+					Log.e(TAG, e.getMessage());
+				}
+	
+				client.close();
+			} 
+		}).start();
 	}
 
 	private void updateSuggestions(String json) {

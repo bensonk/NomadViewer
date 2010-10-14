@@ -2,4 +2,5 @@
 <resources>
     <string name="fetching">Fetching info...</string>
     <string name="app_name">Nomad Viewer</string>
+<string name="suggestion_list_name">Nomad Suggestions</string>
 </resources>
