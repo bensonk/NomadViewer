@@ -14,6 +14,7 @@ import org.json.JSONObject;
 
 import android.app.ListActivity;
 import android.content.Intent;
+import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.net.Uri;
 import android.net.http.AndroidHttpClient;
@@ -50,7 +51,6 @@ public class NomadViewer extends ListActivity {
         handler = new Handler();
         db = new DatabaseHelper(this);
         setContentView(R.layout.main);
-        fetchUpdates();
     }
 	
 	@Override
@@ -101,13 +101,30 @@ public class NomadViewer extends ListActivity {
 				}
 				
 				long time = Calendar.getInstance().getTimeInMillis();
-				long age = lastUpdate - time;
+				long age = time - lastUpdate;
 				lastUpdate = time;
-				if(age < 10000) return;
+				
+				if(age < 10000) {
+					Log.i(TAG, "Not fetching updates, age is only " + age);
+					return;
+				}
+				else {
+					Log.i(TAG, "Fetching suggestion and user updates, age is " + age);
+				}
 	
 				// Fetch Users table
 				try {
-					HttpResponse res = client.execute((HttpUriRequest) new HttpGet(USERS_URL));
+					SQLiteDatabase conn = db.getReadableDatabase();
+					Cursor cur = conn.rawQuery("SELECT MAX(updated_at) FROM users", new String[] {});
+					cur.moveToFirst();
+					String ts = "?since=" + cur.getString(0);
+					cur.close();
+					conn.close();
+					
+					String url = USERS_URL + (ts.equals("?since=null") ? "" : ts);
+					Log.i(TAG, "Fetching users from " + url);
+					
+					HttpResponse res = client.execute((HttpUriRequest) new HttpGet(url));
 					BufferedReader reader = new BufferedReader(new InputStreamReader(res.getEntity().getContent()));
 					StringBuffer content_buffer = new StringBuffer();
 					String line = reader.readLine();
@@ -124,8 +141,18 @@ public class NomadViewer extends ListActivity {
 	
 				// Fetch Suggestions table
 				try {
-					HttpResponse res = client.execute((HttpUriRequest) new HttpGet(SUGGESTIONS_URL));
-					BufferedReader reader = new BufferedReader(new InputStreamReader(res.getEntity().getContent()));
+					SQLiteDatabase conn = db.getReadableDatabase();
+					Cursor cur = conn.rawQuery("SELECT MAX(updated_at) FROM suggestions", new String[] {});
+					cur.moveToFirst();
+					String ts = "?since=" + cur.getString(0);
+					cur.close();
+					conn.close();
+					
+					String url = SUGGESTIONS_URL + (ts.equals("?since=null") ? "" : ts);
+					Log.i(TAG, "Fetching suggestions from " + url);
+
+					HttpResponse res = client.execute((HttpUriRequest) new HttpGet(url));
+					BufferedReader reader = new BufferedReader(new InputStreamReader(res.getEntity().getContent()), 4000);
 					StringBuffer content_buffer = new StringBuffer();
 					String line = reader.readLine();
 					while(line != null) {

@@ -36,16 +36,22 @@ public class SuggestionList extends ListActivity {
 //		public String username;
 		public Location location;
 		private float distanceFromHere = -1.0f;
-		
-		String link() {
-			return "http://nomad.heroku.com/suggestions/" + id;
-		}
-		
+
 		float distance() {
 			if(distanceFromHere < 0) {
 				distanceFromHere = currentLocation.distanceTo(location);
 			}
 			return distanceFromHere;
+		}
+		
+		@SuppressWarnings("unused")
+		Uri webLink() {
+			return Uri.parse("http://nomad.heroku.com/suggestions/" + id);
+		}
+		
+		Uri geoLink() {
+			return Uri.parse("geo:"     + location.getLatitude() + "," + location.getLongitude() + 
+					         "?z=12&q=" + location.getLatitude() + "," + location.getLongitude());
 		}
 	}
 	
@@ -86,10 +92,7 @@ public class SuggestionList extends ListActivity {
 
 	@Override
 	public void onListItemClick(ListView parent, View v, int i, long id) {
-		String link = suggestions[i].link();
-		Log.i(TAG, "Opening url: " + link);
-		Intent browserIntent = new Intent("android.intent.action.VIEW", Uri.parse(link));
-		startActivity(browserIntent);
+		startActivity(new Intent("android.intent.action.VIEW", suggestions[i].geoLink()));
 	}
 	
 	private void fetchAndShowSuggestions() {
@@ -114,16 +117,19 @@ public class SuggestionList extends ListActivity {
 			s.location = l;
 			//s.iconId = cur.getInt(5);
 			//s.username = cur.getString(6);
-			
+
 			my_suggestions.add(s);
 		}
+		cur.close();
+		conn.close();
+		
 		Collections.sort(my_suggestions, new Comparator<Suggestion>() {
 			@Override
 			public int compare(Suggestion a, Suggestion b) {
 				return Float.compare(a.distance(), b.distance());
 			}
 		});
-		
+
 		suggestions = new Suggestion[count];
 		String[] txt = new String[count];
 		int i = 0;
@@ -132,7 +138,7 @@ public class SuggestionList extends ListActivity {
 			txt[i] = s.title;
 			i++;
 		}
-		
+
 		setListAdapter(new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, txt));
 	}
 }
