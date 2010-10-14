@@ -4,10 +4,12 @@
     android:layout_width="fill_parent"
     android:layout_height="fill_parent"
     >
-<TextView  
-	android:id="@+id/display"
-    android:layout_width="fill_parent" 
-    android:layout_height="wrap_content" 
-    android:text="@string/fetching"
-    />
+
+  <ListView
+      android:id="@android:id/list"
+      android:layout_width="fill_parent"
+      android:layout_height="fill_parent"
+      android:drawSelectorOnTop="false"
+      />
+
 </LinearLayout>
