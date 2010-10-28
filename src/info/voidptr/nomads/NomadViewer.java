@@ -33,6 +33,8 @@ public class NomadViewer extends ListActivity {
 	private static String ACTIVITY_URL = "http://nomad.heroku.com/activity/plain.json";
 	private static String USERS_URL = "http://nomad.heroku.com/users.json";
 	private static String SUGGESTIONS_URL = "http://nomad.heroku.com/suggestions.json";
+	private static String POSTS_URL = "http://nomad.heroku.com/posts.json";
+	private static String COMMENTS_URL = "http://nomad.heroku.com/comments.json";
 	
 	private String[] links;
 	
@@ -164,6 +166,58 @@ public class NomadViewer extends ListActivity {
 				} catch (IOException e) {
 					Log.e(TAG, e.getMessage());
 				}
+				
+				// Fetch Posts table
+				try {
+					SQLiteDatabase conn = db.getReadableDatabase();
+					Cursor cur = conn.rawQuery("SELECT MAX(updated_at) FROM posts", new String[] {});
+					cur.moveToFirst();
+					String ts = "?since=" + cur.getString(0);
+					cur.close();
+					conn.close();
+					
+					String url = POSTS_URL + (ts.equals("?since=null") ? "" : ts);
+					Log.i(TAG, "Fetching posts from " + url);
+
+					HttpResponse res = client.execute((HttpUriRequest) new HttpGet(url));
+					BufferedReader reader = new BufferedReader(new InputStreamReader(res.getEntity().getContent()), 4000);
+					StringBuffer content_buffer = new StringBuffer();
+					String line = reader.readLine();
+					while(line != null) {
+						content_buffer.append(line + "\n");
+						line = reader.readLine();
+					}
+					String json_str = content_buffer.toString();
+					updatePosts(json_str);
+				} catch (IOException e) {
+					Log.e(TAG, e.getMessage());
+				}
+				
+				// Fetch Comments table
+				try {
+					SQLiteDatabase conn = db.getReadableDatabase();
+					Cursor cur = conn.rawQuery("SELECT MAX(updated_at) FROM comments", new String[] {});
+					cur.moveToFirst();
+					String ts = "?since=" + cur.getString(0);
+					cur.close();
+					conn.close();
+					
+					String url = COMMENTS_URL + (ts.equals("?since=null") ? "" : ts);
+					Log.i(TAG, "Fetching comments from " + url);
+
+					HttpResponse res = client.execute((HttpUriRequest) new HttpGet(url));
+					BufferedReader reader = new BufferedReader(new InputStreamReader(res.getEntity().getContent()), 4000);
+					StringBuffer content_buffer = new StringBuffer();
+					String line = reader.readLine();
+					while(line != null) {
+						content_buffer.append(line + "\n");
+						line = reader.readLine();
+					}
+					String json_str = content_buffer.toString();
+					updateComments(json_str);
+				} catch (IOException e) {
+					Log.e(TAG, e.getMessage());
+				}
 	
 				client.close();
 			} 
@@ -171,37 +225,12 @@ public class NomadViewer extends ListActivity {
 	}
 
 	private void updateSuggestions(String json) {
-		SQLiteDatabase conn = db.getWritableDatabase();
+		DatabaseUpdater updater = new DatabaseUpdater(db.getWritableDatabase());
 		try {
 			JSONArray array = new JSONArray(json);
 			for(int i = 0; i < array.length(); i++) {
 				JSONObject suggestion = array.getJSONObject(i).getJSONObject("suggestion");
-
-				String id = suggestion.getString("id");
-				String lat = suggestion.getString("lat");
-				String lon = suggestion.getString("lon");
-				String created_at = suggestion.getString("created_at");
-				String updated_at = suggestion.getString("updated_at");
-				String icon_id = suggestion.getString("icon_id");
-				String title = suggestion.getString("title");
-				String content = suggestion.getString("content");
-				String user_id = suggestion.getString("user_id");
-
-				String sql = "INSERT INTO suggestions"
-					       + "(_id, lat, lon, created_at, updated_at, icon_id, title, content, user_id) "
-			               + "values ("
-			               + id + ", "
-			               + lat + ", "
-			               + lon + ", "
-			               + "'" + created_at + "', "
-			               + "'" + updated_at + "', "
-			               + icon_id + ", "
-			               + "'" + title.replace("'", "''") + "', "
-			               + "'" + content.replace("'", "''") + "', "
-			               + user_id
-			               + ")";
-				Log.i(TAG, "inserting suggestion " + title);
-				conn.execSQL(sql);
+				updater.updateSuggestion(suggestion);
 			}
 		} catch (JSONException e) {
 			Log.w(TAG, "Failed to parse or insert suggestion: " + e.getClass().getName() + " -- " + e.getMessage());
@@ -209,42 +238,52 @@ public class NomadViewer extends ListActivity {
 		catch (IllegalStateException e) {
 			Log.w(TAG, "Failure parsing suggestions: " + e.getClass().getName() + " -- " + e.getMessage());
 		}
-		conn.close();
+		updater.close();
 	}
 
 	private void updateUsers(String json) {
-		SQLiteDatabase conn = db.getWritableDatabase();
+		DatabaseUpdater updater = new DatabaseUpdater(db.getWritableDatabase());
 		try {
 			JSONArray array = new JSONArray(json);
-			for(int i = 0; i < array.length(); i++) {
-				JSONObject user = array.getJSONObject(i);
-				String id = user.getString("id");
-				String name = user.getString("name");
-				String created_at = user.getString("created_at");
-				String updated_at = user.getString("updated_at");
-				String fullname = user.getString("fullname");
-				String admin = (user.getString("admin").compareTo("true") == 0) ? "1" : "0";
-
-				String sql = "INSERT INTO users"
-				           + "(_id, name, created_at, updated_at, fullname, admin) "
-		                   + "values ("
-		                   + id + ", "
-		                   + "'" + name + "', "
-			               + "'" + created_at + "', "
-			               + "'" + updated_at + "', "
-			               + "'" + fullname + "', "
-		                   + admin
-		                   + ")";
-				Log.i(TAG, "inserting user " + name);
-				conn.execSQL(sql);
-			}
+			for(int i = 0; i < array.length(); i++)
+				updater.updateUser(array.getJSONObject(i).getJSONObject("user"));
 		} catch (JSONException e) {
 			Log.w(TAG, "Failed to parse actions: " + e.getClass().getName() + " -- " + e.getMessage());
 		}
 		catch (IllegalStateException e) {
 			Log.w(TAG, "Failure parsing users: " + e.getClass().getName() + " -- " + e.getMessage());
 		}
-		conn.close();
+		updater.close();
+	}
+
+	private void updatePosts(String json) {
+		DatabaseUpdater updater = new DatabaseUpdater(db.getWritableDatabase());
+		try {
+			JSONArray array = new JSONArray(json);
+			for(int i = 0; i < array.length(); i++)
+				updater.updatePost(array.getJSONObject(i).getJSONObject("post"));
+		} catch (JSONException e) {
+			Log.w(TAG, "Failed to parse post: " + e.getClass().getName() + " -- " + e.getMessage());
+		}
+		catch (IllegalStateException e) {
+			Log.w(TAG, "Failure parsing posts: " + e.getClass().getName() + " -- " + e.getMessage());
+		}
+		updater.close();
+	}
+
+	private void updateComments(String json) {
+		DatabaseUpdater updater = new DatabaseUpdater(db.getWritableDatabase());
+		try {
+			JSONArray array = new JSONArray(json);
+			for(int i = 0; i < array.length(); i++)
+				updater.updateComment(array.getJSONObject(i).getJSONObject("comment"));
+		} catch (JSONException e) {
+			Log.w(TAG, "Failed to parse post: " + e.getClass().getName() + " -- " + e.getMessage());
+		}
+		catch (IllegalStateException e) {
+			Log.w(TAG, "Failure parsing posts: " + e.getClass().getName() + " -- " + e.getMessage());
+		}
+		updater.close();
 	}
 
 	private void parseAndShowActions(String actions) {

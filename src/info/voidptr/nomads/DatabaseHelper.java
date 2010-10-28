@@ -42,9 +42,44 @@ final class Users implements BaseColumns {
     public static final String ADMIN = "admin";
 }
 
+/**
+ * Posts table
+ */
+final class Posts implements BaseColumns {
+    // This class cannot be instantiated
+    private Posts() {}
+    public static final String DEFAULT_SORT_ORDER = "_id DESC";
+
+    // Columns
+    public static final String TITLE = "title";
+    public static final String CONTENT = "content";
+    public static final String CREATED_AT = "created_at";
+    public static final String UPDATED_AT = "updated_at";
+    public static final String LAT = "lat";
+    public static final String LON = "lon";
+    public static final String USER_ID = "user_id";
+}
+
+/**
+ * Comments table
+ */
+final class Comments implements BaseColumns {
+    // This class cannot be instantiated
+    private Comments() {}
+    public static final String DEFAULT_SORT_ORDER = "_id DESC";
+
+    // Columns
+    public static final String BODY = "body";
+    public static final String CREATED_AT = "created_at";
+    public static final String UPDATED_AT = "updated_at";
+    public static final String POSITION_TYPE = "position_type";
+    public static final String POSITION_ID = "position_id";
+    public static final String USER_ID = "user_id";
+}
+
 public class DatabaseHelper extends SQLiteOpenHelper {
 	private static String DATABASE_NAME = "nomad_db";
-	private static int DATABASE_VERSION = 3;
+	private static int DATABASE_VERSION = 4;
 	private static String TAG = "NomadViewerDB";
 
     DatabaseHelper(Context context) {
@@ -73,6 +108,27 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 + Suggestions.UPDATED_AT + " TIMESTAMP,"
                 + Suggestions.ICON_ID + " INTEGER,"
                 + Suggestions.USER_ID + " INTEGER"
+                + ");");
+        
+        db.execSQL("CREATE TABLE posts (" // TODO: Fix this schema
+                + Posts._ID + " INTEGER PRIMARY KEY ON CONFLICT REPLACE,"
+                + Posts.TITLE + " VARCHAR(255),"
+                + Posts.CONTENT + " TEXT,"
+                + Posts.LAT + " FLOAT,"
+                + Posts.LON + " FLOAT,"
+                + Posts.CREATED_AT + " TIMESTAMP,"
+                + Posts.UPDATED_AT + " TIMESTAMP,"
+                + Posts.USER_ID + " INTEGER"
+                + ");");
+        
+        db.execSQL("CREATE TABLE comments ("
+                + Comments._ID + " INTEGER PRIMARY KEY ON CONFLICT REPLACE,"
+                + Comments.BODY + " TEXT,"
+                + Comments.CREATED_AT + " TIMESTAMP,"
+                + Comments.UPDATED_AT + " TIMESTAMP,"
+                + Comments.POSITION_ID + " INTEGER,"
+                + Comments.POSITION_TYPE + " VARCHAR(255),"
+                + Comments.USER_ID + " INTEGER"
                 + ");");
     }
 
