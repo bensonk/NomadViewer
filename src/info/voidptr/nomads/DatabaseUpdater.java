@@ -12,10 +12,21 @@ public class DatabaseUpdater {
 	SQLiteDatabase conn;
 	private final String TAG = "DatabaseUpdater";
 	
+	/**
+	 * Creates a DatabaseUpdater.  This is a class that wraps the necessary 
+	 * functionality to put JSON data into the database. 
+	 * @param conn
+	 * A SQLiteDatabase connection object
+	 */
     public DatabaseUpdater(SQLiteDatabase conn) {
     	this.conn = conn;
     }
 
+    /**
+     * Takes raw JSON and inserts the contained data into the database. 
+     * @param data
+     *        A string containing raw json, of the style Rails produces from stuff.to_json. 
+     */
     public void handleJson(String data) {
     	try {
 			JSONArray array = new JSONArray(data);
@@ -26,26 +37,27 @@ public class DatabaseUpdater {
     		Log.e(TAG, "Error parsing json: " + e.getClass().getName() + " -- " + e.getMessage());
     	}
     }
-
+    /**
+     * Parses a json object and updates it in the DB.
+     * @param obj
+     *        A JSONObject containing a single entity, such as a suggestion or post. Expects 
+     *        rails-style entities, like { post: { id: 2, body: "test" }}. 
+     * @throws JSONException
+     */
     public void parseObject(JSONObject obj) throws JSONException {
-    	if(obj.has("suggestion")) {
+    	if(obj.has("suggestion"))
     		updateSuggestion(obj.getJSONObject("suggestion"));
-    	}
-    	else if(obj.has("post")) {
+    	else if(obj.has("post"))
     		updatePost(obj.getJSONObject("post"));
-    	}
-    	else if(obj.has("user")) {
+    	else if(obj.has("user"))
     		updateUser(obj.getJSONObject("user"));
-    	}
-    	else if(obj.has("comment")) {
+    	else if(obj.has("comment"))
     		updateComment(obj.getJSONObject("comment"));
-    	}
-    	else {
+    	else
     		Log.w(TAG, "Tried to find an object, but none was present: " + obj.toString());
-    	}
     }
 
-    public void updateSuggestion(JSONObject suggestion) throws JSONException {
+    private void updateSuggestion(JSONObject suggestion) throws JSONException {
 		String id = suggestion.getString("id");
 		String lat = suggestion.getString("lat");
 		String lon = suggestion.getString("lon");
@@ -73,7 +85,7 @@ public class DatabaseUpdater {
 		conn.execSQL(sql);
 	}
     
-    public void updatePost(JSONObject post) throws JSONException {    	
+    private void updatePost(JSONObject post) throws JSONException {    	
 		String id = post.getString("id");
 		String lat = post.getString("lat");
 		String lon = post.getString("lon");
@@ -99,7 +111,7 @@ public class DatabaseUpdater {
 		conn.execSQL(sql);
     }
     
-    public void updateComment(JSONObject comment) throws JSONException {
+    private void updateComment(JSONObject comment) throws JSONException {
 		String id = comment.getString("id");
 		String created_at = comment.getString("created_at");
 		String updated_at = comment.getString("updated_at");
@@ -123,7 +135,7 @@ public class DatabaseUpdater {
 		conn.execSQL(sql);
     }
     
-    public void updateUser(JSONObject user) throws JSONException {
+    private void updateUser(JSONObject user) throws JSONException {
 		String id = user.getString("id");
 		String name = user.getString("name");
 		String created_at = user.getString("created_at");
@@ -145,6 +157,14 @@ public class DatabaseUpdater {
 		conn.execSQL(sql);
     }
     
+    /**
+     * A convenience method to get the most recent update timstamp for a given table
+     * @param tablename
+     * The name of the table you'd like the most recent timestamp for
+     * 
+     * @return
+     * The timestamp, or the string "null"
+     */
     public String getMostRecentTimestamp(String tablename) {
 	    String ts = "null";
 		Cursor cur = conn.rawQuery("SELECT MAX(updated_at) FROM " + tablename, new String[] {});
@@ -158,6 +178,9 @@ public class DatabaseUpdater {
 		return ts;
     }
     
+    /**
+     * Closes the database associated with this wrapper. 
+     */
     public void close() {
     	conn.close();
     }

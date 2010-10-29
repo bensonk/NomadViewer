@@ -60,7 +60,6 @@ public class NomadViewer extends ListActivity {
 	
 	@Override
 	public boolean onOptionsItemSelected(MenuItem m) {
-		
 		return handleMenuSelection(m) || super.onOptionsItemSelected(m);
 	}
 	
@@ -73,6 +72,9 @@ public class NomadViewer extends ListActivity {
 		return false;
 	}
 	
+	/**
+	 * Handles list item click events
+	 */
 	@Override
 	public void onListItemClick(ListView parent, View v, int i, long id) {
 		Log.i(TAG, "Opening url: " + links[i]);
@@ -80,6 +82,9 @@ public class NomadViewer extends ListActivity {
 		startActivity(browserIntent);
 	}
 
+	/**
+	 * Fetches db updates in the background. 
+	 */
 	private void fetchUpdates() {
 		new Thread(new Runnable() {
 			@Override
@@ -211,6 +216,10 @@ public class NomadViewer extends ListActivity {
 		}
 	}
 
+	/**
+	 * Shows actions in a listview. Can be called from any thread. 
+	 * @param txt
+	 */
 	private void showActions(final String[] txt) {
 		// Don't you just love Java? 
 		final ListActivity parent = this;

@@ -82,10 +82,18 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 	private static int DATABASE_VERSION = 4;
 	private static String TAG = "NomadViewerDB";
 
+	/**
+	 * Creates a database helper object. 
+	 * @param context
+	 * The application context in which the helper should be created
+	 */
     DatabaseHelper(Context context) {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);
     }
 
+    /**
+     * Handles db creation
+     */
     @Override
     public void onCreate(SQLiteDatabase db) {
         db.execSQL("CREATE TABLE users ("
@@ -132,12 +140,17 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 + ");");
     }
 
+    /**
+     * Handles db upgrades
+     */
     @Override
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
         Log.w(TAG, "Upgrading database from version " + oldVersion + " to "
                 + newVersion + ", which will destroy all old data");
         db.execSQL("DROP TABLE IF EXISTS users");
         db.execSQL("DROP TABLE IF EXISTS suggestions");
+        db.execSQL("DROP TABLE IF EXISTS posts");
+        db.execSQL("DROP TABLE IF EXISTS comments");
         onCreate(db);
     }
 }
