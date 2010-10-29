@@ -10,12 +10,9 @@ import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpUriRequest;
 import org.json.JSONArray;
 import org.json.JSONException;
-import org.json.JSONObject;
 
 import android.app.ListActivity;
 import android.content.Intent;
-import android.database.Cursor;
-import android.database.sqlite.SQLiteDatabase;
 import android.net.Uri;
 import android.net.http.AndroidHttpClient;
 import android.os.Bundle;
@@ -89,6 +86,7 @@ public class NomadViewer extends ListActivity {
 			public void run() {
 				Log.i(TAG, "Fetching activity from " + ACTIVITY_URL);
 				AndroidHttpClient client = AndroidHttpClient.newInstance("Nomad App");
+				DatabaseUpdater updater = new DatabaseUpdater(db.getWritableDatabase());
 
 				// Fetch recent activity
 				try {
@@ -116,13 +114,7 @@ public class NomadViewer extends ListActivity {
 	
 				// Fetch Users table
 				try {
-					SQLiteDatabase conn = db.getReadableDatabase();
-					Cursor cur = conn.rawQuery("SELECT MAX(updated_at) FROM users", new String[] {});
-					cur.moveToFirst();
-					String ts = "?since=" + cur.getString(0);
-					cur.close();
-					conn.close();
-					
+					String ts = "?since=" + updater.getMostRecentTimestamp("users");
 					String url = USERS_URL + (ts.equals("?since=null") ? "" : ts);
 					Log.i(TAG, "Fetching users from " + url);
 					
@@ -134,8 +126,7 @@ public class NomadViewer extends ListActivity {
 						content_buffer.append(line + "\n");
 						line = reader.readLine();
 					}
-					String json_str = content_buffer.toString();
-					updateUsers(json_str);
+					updater.handleJson(content_buffer.toString());
 					Log.i(TAG, "Fetched Users table");
 				} catch (IOException e) {
 					Log.e(TAG, e.getMessage());
@@ -143,13 +134,7 @@ public class NomadViewer extends ListActivity {
 	
 				// Fetch Suggestions table
 				try {
-					SQLiteDatabase conn = db.getReadableDatabase();
-					Cursor cur = conn.rawQuery("SELECT MAX(updated_at) FROM suggestions", new String[] {});
-					cur.moveToFirst();
-					String ts = "?since=" + cur.getString(0);
-					cur.close();
-					conn.close();
-					
+					String ts = "?since=" + updater.getMostRecentTimestamp("suggestions");
 					String url = SUGGESTIONS_URL + (ts.equals("?since=null") ? "" : ts);
 					Log.i(TAG, "Fetching suggestions from " + url);
 
@@ -161,21 +146,14 @@ public class NomadViewer extends ListActivity {
 						content_buffer.append(line + "\n");
 						line = reader.readLine();
 					}
-					String json_str = content_buffer.toString();
-					updateSuggestions(json_str);
+					updater.handleJson(content_buffer.toString());
 				} catch (IOException e) {
 					Log.e(TAG, e.getMessage());
 				}
 				
 				// Fetch Posts table
 				try {
-					SQLiteDatabase conn = db.getReadableDatabase();
-					Cursor cur = conn.rawQuery("SELECT MAX(updated_at) FROM posts", new String[] {});
-					cur.moveToFirst();
-					String ts = "?since=" + cur.getString(0);
-					cur.close();
-					conn.close();
-					
+					String ts = "?since=" + updater.getMostRecentTimestamp("posts");
 					String url = POSTS_URL + (ts.equals("?since=null") ? "" : ts);
 					Log.i(TAG, "Fetching posts from " + url);
 
@@ -187,21 +165,14 @@ public class NomadViewer extends ListActivity {
 						content_buffer.append(line + "\n");
 						line = reader.readLine();
 					}
-					String json_str = content_buffer.toString();
-					updatePosts(json_str);
+					updater.handleJson(content_buffer.toString());
 				} catch (IOException e) {
 					Log.e(TAG, e.getMessage());
 				}
 				
 				// Fetch Comments table
 				try {
-					SQLiteDatabase conn = db.getReadableDatabase();
-					Cursor cur = conn.rawQuery("SELECT MAX(updated_at) FROM comments", new String[] {});
-					cur.moveToFirst();
-					String ts = "?since=" + cur.getString(0);
-					cur.close();
-					conn.close();
-					
+					String ts = "?since=" + updater.getMostRecentTimestamp("comments");
 					String url = COMMENTS_URL + (ts.equals("?since=null") ? "" : ts);
 					Log.i(TAG, "Fetching comments from " + url);
 
@@ -213,8 +184,7 @@ public class NomadViewer extends ListActivity {
 						content_buffer.append(line + "\n");
 						line = reader.readLine();
 					}
-					String json_str = content_buffer.toString();
-					updateComments(json_str);
+					updater.handleJson(content_buffer.toString());
 				} catch (IOException e) {
 					Log.e(TAG, e.getMessage());
 				}
@@ -222,68 +192,6 @@ public class NomadViewer extends ListActivity {
 				client.close();
 			} 
 		}).start();
-	}
-
-	private void updateSuggestions(String json) {
-		DatabaseUpdater updater = new DatabaseUpdater(db.getWritableDatabase());
-		try {
-			JSONArray array = new JSONArray(json);
-			for(int i = 0; i < array.length(); i++) {
-				JSONObject suggestion = array.getJSONObject(i).getJSONObject("suggestion");
-				updater.updateSuggestion(suggestion);
-			}
-		} catch (JSONException e) {
-			Log.w(TAG, "Failed to parse or insert suggestion: " + e.getClass().getName() + " -- " + e.getMessage());
-		}
-		catch (IllegalStateException e) {
-			Log.w(TAG, "Failure parsing suggestions: " + e.getClass().getName() + " -- " + e.getMessage());
-		}
-		updater.close();
-	}
-
-	private void updateUsers(String json) {
-		DatabaseUpdater updater = new DatabaseUpdater(db.getWritableDatabase());
-		try {
-			JSONArray array = new JSONArray(json);
-			for(int i = 0; i < array.length(); i++)
-				updater.updateUser(array.getJSONObject(i).getJSONObject("user"));
-		} catch (JSONException e) {
-			Log.w(TAG, "Failed to parse actions: " + e.getClass().getName() + " -- " + e.getMessage());
-		}
-		catch (IllegalStateException e) {
-			Log.w(TAG, "Failure parsing users: " + e.getClass().getName() + " -- " + e.getMessage());
-		}
-		updater.close();
-	}
-
-	private void updatePosts(String json) {
-		DatabaseUpdater updater = new DatabaseUpdater(db.getWritableDatabase());
-		try {
-			JSONArray array = new JSONArray(json);
-			for(int i = 0; i < array.length(); i++)
-				updater.updatePost(array.getJSONObject(i).getJSONObject("post"));
-		} catch (JSONException e) {
-			Log.w(TAG, "Failed to parse post: " + e.getClass().getName() + " -- " + e.getMessage());
-		}
-		catch (IllegalStateException e) {
-			Log.w(TAG, "Failure parsing posts: " + e.getClass().getName() + " -- " + e.getMessage());
-		}
-		updater.close();
-	}
-
-	private void updateComments(String json) {
-		DatabaseUpdater updater = new DatabaseUpdater(db.getWritableDatabase());
-		try {
-			JSONArray array = new JSONArray(json);
-			for(int i = 0; i < array.length(); i++)
-				updater.updateComment(array.getJSONObject(i).getJSONObject("comment"));
-		} catch (JSONException e) {
-			Log.w(TAG, "Failed to parse post: " + e.getClass().getName() + " -- " + e.getMessage());
-		}
-		catch (IllegalStateException e) {
-			Log.w(TAG, "Failure parsing posts: " + e.getClass().getName() + " -- " + e.getMessage());
-		}
-		updater.close();
 	}
 
 	private void parseAndShowActions(String actions) {

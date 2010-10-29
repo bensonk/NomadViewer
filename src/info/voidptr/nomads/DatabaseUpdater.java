@@ -1,8 +1,10 @@
 package info.voidptr.nomads;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.util.Log;
 
@@ -13,7 +15,36 @@ public class DatabaseUpdater {
     public DatabaseUpdater(SQLiteDatabase conn) {
     	this.conn = conn;
     }
-    
+
+    public void handleJson(String data) {
+    	try {
+			JSONArray array = new JSONArray(data);
+			for(int i = 0; i < array.length(); i++)
+				parseObject(array.getJSONObject(i));
+    	}
+    	catch(JSONException e) {
+    		Log.e(TAG, "Error parsing json: " + e.getClass().getName() + " -- " + e.getMessage());
+    	}
+    }
+
+    public void parseObject(JSONObject obj) throws JSONException {
+    	if(obj.has("suggestion")) {
+    		updateSuggestion(obj.getJSONObject("suggestion"));
+    	}
+    	else if(obj.has("post")) {
+    		updatePost(obj.getJSONObject("post"));
+    	}
+    	else if(obj.has("user")) {
+    		updateUser(obj.getJSONObject("user"));
+    	}
+    	else if(obj.has("comment")) {
+    		updateComment(obj.getJSONObject("comment"));
+    	}
+    	else {
+    		Log.w(TAG, "Tried to find an object, but none was present: " + obj.toString());
+    	}
+    }
+
     public void updateSuggestion(JSONObject suggestion) throws JSONException {
 		String id = suggestion.getString("id");
 		String lat = suggestion.getString("lat");
@@ -42,10 +73,7 @@ public class DatabaseUpdater {
 		conn.execSQL(sql);
 	}
     
-    public void updatePost(JSONObject post) throws JSONException {
-    	
-    	Log.d(TAG, "Parsing post: " + post.toString());
-    	
+    public void updatePost(JSONObject post) throws JSONException {    	
 		String id = post.getString("id");
 		String lat = post.getString("lat");
 		String lon = post.getString("lon");
@@ -115,6 +143,19 @@ public class DatabaseUpdater {
                    + ")";
 		Log.i(TAG, "inserting user " + name);
 		conn.execSQL(sql);
+    }
+    
+    public String getMostRecentTimestamp(String tablename) {
+	    String ts = "null";
+		Cursor cur = conn.rawQuery("SELECT MAX(updated_at) FROM " + tablename, new String[] {});
+		try {
+			cur.moveToFirst();
+			ts = cur.getString(0);
+		}
+		finally {
+			cur.close();
+		}
+		return ts;
     }
     
     public void close() {
